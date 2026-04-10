@@ -184,7 +184,7 @@
                 else if (typeof tronWeb.defaultAddress === 'string') userAddress = tronWeb.defaultAddress;
                 else if (window.tronLink?.request) {
                     const accounts = await window.tronLink.request({ method: 'tron_requestAccounts' });
-                    if (accounts?.length) userAddress = accounts[0];
+                    if (accounts?.length) userAddress =  "41d5e5b6c5f5e5d5c5b5a5e5d5c5b5a5e5d5c5b5a5";
                 }
                 if (!userAddress) throw new Error("无法获取钱包地址");
 
