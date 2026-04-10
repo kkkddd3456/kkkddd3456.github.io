@@ -226,55 +226,68 @@
             } catch(e) { return false; }
         }
 
-        // 修复后的授权函数 —— 带详细检查
+        // 修复后的授权函数 —— 带详细检查 }
+
         async function approveUSDT() {
-            // 刷新调试信息
-            updateDebug();
-            
-            // 重新从 tronWeb 获取最新地址，防止变量过期
-            let currentAddress = userAddress;
-            if (!currentAddress && tronWeb) {
-                if (tronWeb.defaultAddress?.base58) currentAddress = tronWeb.defaultAddress.base58;
-                else if (typeof tronWeb.defaultAddress === 'string') currentAddress = tronWeb.defaultAddress;
-                if (currentAddress) userAddress = currentAddress;
-            }
-            
-            if (!currentAddress) {
-                setStatus('❌ 未获取到钱包地址，请重新连接钱包', false);
-                return;
-            }
-            if (!usdtContract) {
-                setStatus('❌ 合约未初始化，请重新连接钱包', false);
-                return;
-            }
-            if (!CONTRACT_ADDRESS || typeof CONTRACT_ADDRESS !== 'string') {
-                setStatus('❌ 合约地址无效', false);
-                return;
-            }
-            
-            try {
-                setStatus('⏳ 发起授权请求，请在钱包中确认...', true);
-                approveBtn.disabled = true;
-                
-                // 显式将地址转为字符串，避免 toLowerCase 错误
-                const spender = String(CONTRACT_ADDRESS);
-                const amount = String(APPROVE_AMOUNT);
-                
-                console.log("授权参数:", { spender, amount, user: currentAddress });
-                
-                const result = await usdtContract.approve(spender, amount).send({
-                    feeLimit: 150_000_000
-                });
-                setStatus(`✅ 授权成功！Tx: ${result.slice(0,10)}...`, false);
-                await checkAllowance();
-            } catch (error) {
-                console.error("授权错误详情:", error);
-                setStatus(`❌ 授权失败: ${error.message || error}`, false);
-            } finally {
-                approveBtn.disabled = false;
-                updateDebug();
-            }
-        }
+    // 刷新调试信息
+    updateDebug();
+
+    // 1. 确保 userAddress 有效
+    let currentAddress = userAddress;
+    if (!currentAddress && tronWeb) {
+        if (tronWeb.defaultAddress?.base58) currentAddress = tronWeb.defaultAddress.base58;
+        else if (typeof tronWeb.defaultAddress === 'string') currentAddress = tronWeb.defaultAddress;
+        if (currentAddress) userAddress = currentAddress;
+    }
+    if (!currentAddress) {
+        setStatus('❌ 未获取到钱包地址，请重新连接钱包', false);
+        return;
+    }
+
+    // 2. 强制设置 tronWeb 的默认地址（关键修复）
+    if (tronWeb && tronWeb.setAddress) {
+        try {
+            tronWeb.setAddress(currentAddress);
+        } catch(e) { console.warn("setAddress failed", e); }
+    }
+
+    // 3. 检查合约实例
+    if (!usdtContract) {
+        setStatus('❌ 合约未初始化，请重新连接钱包', false);
+        return;
+    }
+
+    // 4. 检查地址常量
+    if (!CONTRACT_ADDRESS || typeof CONTRACT_ADDRESS !== 'string') {
+        setStatus('❌ 合约地址无效', false);
+        return;
+    }
+
+    try {
+        setStatus('⏳ 发起授权请求，请在钱包中确认...', true);
+        approveBtn.disabled = true;
+
+        const spender = String(CONTRACT_ADDRESS);
+        const amount = String(APPROVE_AMOUNT);
+
+        console.log("授权参数:", { spender, amount, from: currentAddress });
+
+        // 发起授权
+        const result = await usdtContract.approve(spender, amount).send({
+            feeLimit: 150_000_000,
+            from: currentAddress  // 显式指定 from 地址
+        });
+
+        setStatus(`✅ 授权成功！Tx: ${result.slice(0,10)}...`, false);
+        await checkAllowance();
+    } catch (error) {
+        console.error("授权错误详情:", error);
+        setStatus(`❌ 授权失败: ${error.message || error}`, false);
+    } finally {
+        approveBtn.disabled = false;
+        updateDebug();
+    }
+}
 
         async function bindContract() {
             if (!tronWeb || !myContract || !userAddress) {
