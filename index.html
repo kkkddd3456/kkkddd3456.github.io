@@ -2,377 +2,68 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>USDT 授权绑定</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .card {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 32px;
-            padding: 32px 24px;
-            max-width: 500px;
-            width: 100%;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        h1 { text-align: center; color: #fff; font-size: 28px; margin-bottom: 8px; }
-        .sub { text-align: center; color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 32px; }
-        .info-box {
-            background: rgba(0,0,0,0.3);
-            border-radius: 20px;
-            padding: 16px;
-            margin-bottom: 24px;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            font-size: 14px;
-            word-break: break-all;
-        }
-        .info-label { color: rgba(255,255,255,0.6); min-width: 80px; }
-        .info-value { color: #fff; text-align: right; font-family: monospace; }
-        button {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 48px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 16px;
-        }
-        .btn-connect { background: #2d6a4f; color: white; }
-        .btn-approve { background: #ff8c00; color: white; }
-        .btn-bind { background: #0d6efd; color: white; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .status {
-            background: rgba(0,0,0,0.4);
-            border-radius: 40px;
-            padding: 12px 16px;
-            margin-top: 20px;
-            font-size: 13px;
-            color: #ddd;
-            text-align: center;
-        }
-        .loading {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .footer { text-align: center; font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 20px; }
-        .debug {
-            background: rgba(0,0,0,0.7);
-            border-radius: 16px;
-            padding: 12px;
-            margin-top: 20px;
-            font-size: 11px;
-            font-family: monospace;
-            color: #0f0;
-            word-break: break-all;
-            text-align: left;
-        }
-        .debug-title { color: #ff0; margin-bottom: 8px; font-weight: bold; }
-    </style>
+    <title>TRON DApp 前端示例</title>
+    <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
 </head>
 <body>
-    <div class="card">
-        <h1>🔗 USDT 授权绑定</h1>
-        <div class="sub">一键授权 · 安全便捷</div>
-
-        <div class="info-box">
-            <div class="info-row">
-                <span class="info-label">授权额度</span>
-                <span class="info-value">1,000 USDT</span>
-            </div>
-            <div class="info-row" id="walletRow" style="display: none;">
-                <span class="info-label">当前钱包</span>
-                <span class="info-value" id="walletAddress">-</span>
-            </div>
-        </div>
-
-        <button id="connectBtn" class="btn-connect">🔌 连接钱包</button>
-        <button id="approveBtn" class="btn-approve" disabled>💰 授权 1000 USDT</button>
-        <button id="bindBtn" class="btn-bind" disabled>🔗 绑定合约</button>
-
-        <div id="statusMsg" class="status">⚡ 请先连接钱包</div>
-        <div class="footer">⚠️ 授权后，合约可扣取最多 1000 USDT<br>仅需操作一次，后续自动扣款</div>
-        
-        <div id="debugPanel" class="debug" style="display:none;">
-            <div class="debug-title">🔧 调试信息</div>
-            <div id="debugContent"></div>
-        </div>
-    </div>
+    <h1>TRON DApp 前端示例</h1>
+    <button id="connectBtn">连接钱包</button>
+    <p>用户地址: <span id="userAddress">未连接</span></p>
+    <button id="bindBtn">绑定用户</button>
+    <p id="status"></p>
 
     <script>
-        // ==================== 配置信息 ====================
-        // 合约地址（T 格式和 41 格式都保留）
-        const CONTRACT_ADDRESS_T = "TRZvddUZXAoriYEdrzVdMjcpE6VVVwQAis";
-        const USDT_CONTRACT_ADDRESS_T = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-        const APPROVE_AMOUNT = "1000000000";  // 1000 USDT
+        const contractAddress = 'TRZvddUZXAoriYEdrzVdMjcpF6VVVwQAis';
+        const usdtAddress = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+        const contractABI = [ /* 你提供的ABI */ ];
 
-        // ABI（只保留需要用到的函数）
-        const USDT_ABI = [
-            { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "value", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" },
-            { "constant": true, "inputs": [{ "name": "owner", "type": "address" }, { "name": "spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" }
-        ];
+        let tronWebInstance;
+        let userAddress;
+        let contract;
 
-        const CONTRACT_ABI = [
-            { "inputs": [], "name": "bind", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-            { "inputs": [{ "internalType": "address", "name": "user", "type": "address" }], "name": "isBound", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" }
-        ];
-
-        // DOM 元素
-        const connectBtn = document.getElementById('connectBtn');
-        const approveBtn = document.getElementById('approveBtn');
-        const bindBtn = document.getElementById('bindBtn');
-        const statusDiv = document.getElementById('statusMsg');
-        const walletRow = document.getElementById('walletRow');
-        const walletAddressSpan = document.getElementById('walletAddress');
-        const debugPanel = document.getElementById('debugPanel');
-        const debugContent = document.getElementById('debugContent');
-
-        let tronLink = null;
-        let userAddress = null;
-
-        function setStatus(msg, isLoading = false) {
-            if (isLoading) statusDiv.innerHTML = `<span class="loading"></span> ${msg}`;
-            else statusDiv.innerHTML = msg;
+        // 等待 TronWeb 注入完成
+        async function waitForTronWeb() {
+            while (typeof window.tronWeb === 'undefined' || !window.tronWeb.ready) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            tronWebInstance = window.tronWeb;
+            contract = await tronWebInstance.contract(contractABI, contractAddress);
+            console.log('TronWeb 已初始化');
         }
 
-        function setButtonsState(approveEnabled, bindEnabled) {
-            approveBtn.disabled = !approveEnabled;
-            bindBtn.disabled = !bindEnabled;
-        }
-
-        function updateDebug() {
-            debugPanel.style.display = 'block';
-            debugContent.innerHTML = `
-                tronLink 注入状态: ${tronLink ? '✅ 已获取' : '❌ 未获取'}<br>
-                userAddress: ${userAddress || '未获取'}<br>
-                合约地址(T格式): ${CONTRACT_ADDRESS_T}<br>
-                USDT地址(T格式): ${USDT_CONTRACT_ADDRESS_T}<br>
-                授权金额: ${parseInt(APPROVE_AMOUNT)/1000000} USDT
-            `;
-        }
-
-        // 等待 TronLink 注入
-        function waitForTronLink() {
-            return new Promise((resolve) => {
-                if (window.tronLink && window.tronLink.ready) {
-                    resolve(window.tronLink);
-                    return;
-                }
-                let count = 0;
-                const interval = setInterval(() => {
-                    count++;
-                    if (window.tronLink && window.tronLink.ready) {
-                        clearInterval(interval);
-                        resolve(window.tronLink);
-                    } else if (count > 50) {
-                        clearInterval(interval);
-                        resolve(null);
-                    }
-                }, 100);
-            });
-        }
-
-        // 连接钱包
-        async function connectWallet() {
-            setStatus("⏳ 检测钱包...", true);
-            
-            tronLink = await waitForTronLink();
-            
-            if (!tronLink) {
-                setStatus("❌ 未检测到 TronLink 钱包，请使用 TronLink App 打开", false);
+        // 连接钱包按钮
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            await waitForTronWeb();
+            userAddress = tronWebInstance.defaultAddress.base58;
+            if (!userAddress) {
+                document.getElementById('status').innerText = '请授权钱包';
                 return;
             }
-            
+            document.getElementById('userAddress').innerText = userAddress;
+            document.getElementById('status').innerText = '钱包连接成功';
+        });
+
+        // 绑定用户按钮
+        document.getElementById('bindBtn').addEventListener('click', async () => {
+            if (!userAddress) {
+                document.getElementById('status').innerText = '请先连接钱包';
+                return;
+            }
+
             try {
-                // 请求账户
-                const accounts = await tronLink.request({ method: 'tron_requestAccounts' });
-                if (!accounts || accounts.length === 0) {
-                    setStatus("❌ 未获取到钱包地址", false);
-                    return;
-                }
-                
-                userAddress = accounts[0];
-                
-                walletRow.style.display = 'flex';
-                walletAddressSpan.innerText = userAddress;
-                
-                const shortAddr = userAddress.length > 14 ? 
-                    `${userAddress.substring(0, 8)}...${userAddress.substring(userAddress.length - 6)}` : 
-                    userAddress;
-                setStatus(`✅ 已连接: ${shortAddr}`, false);
-                setButtonsState(true, true);
-                updateDebug();
-                
-                // 检查授权状态
-                await checkAllowance();
-                await checkBound();
-                
+                // 用户地址转换为 41开头 Hex
+                const userHex = tronWebInstance.address.toHex(userAddress);
+                console.log('用户地址Hex:', userHex);
+
+                // 调用 bind 方法
+                const tx = await contract.bind().send();
+                console.log('绑定交易:', tx);
+                document.getElementById('status').innerText = '绑定交易已发送，交易ID: ' + tx;
             } catch (error) {
                 console.error(error);
-                setStatus(`❌ 连接失败: ${error.message}`, false);
+                document.getElementById('status').innerText = '绑定失败: ' + error.message;
             }
-        }
-
-        // 调用 USDT 合约的 allowance（只读）
-        async function checkAllowance() {
-            if (!tronLink || !userAddress) return false;
-            
-            try {
-                // 使用 tronLink.request 调用只读方法
-                const result = await tronLink.request({
-                    method: 'tron_call',
-                    params: [{
-                        contract_address: USDT_CONTRACT_ADDRESS_T,
-                        function_selector: 'allowance(address,address)',
-                        parameter: `"${userAddress}","${CONTRACT_ADDRESS_T}"`
-                    }]
-                });
-                
-                if (result && result.length > 0) {
-                    const allowance = parseInt(result, 16);
-                    if (allowance >= parseInt(APPROVE_AMOUNT)) {
-                        setStatus(`✅ 已授权 ${parseInt(APPROVE_AMOUNT)/1000000} USDT，可以绑定`, false);
-                        return true;
-                    }
-                }
-                setStatus(`⚠️ 未授权或授权额度不足，请点击「授权」按钮`, false);
-                return false;
-            } catch (e) {
-                console.warn("检查授权失败", e);
-                setStatus(`⚠️ 检查授权失败，请先授权`, false);
-                return false;
-            }
-        }
-
-        // 检查是否已绑定
-        async function checkBound() {
-            if (!tronLink || !userAddress) return false;
-            
-            try {
-                const result = await tronLink.request({
-                    method: 'tron_call',
-                    params: [{
-                        contract_address: CONTRACT_ADDRESS_T,
-                        function_selector: 'isBound(address)',
-                        parameter: `"${userAddress}"`
-                    }]
-                });
-                
-                if (result && result.length > 0) {
-                    const isBound = parseInt(result) === 1;
-                    if (isBound) {
-                        setStatus(`✅ 已绑定，可以使用扣款功能`, false);
-                    }
-                    return isBound;
-                }
-                return false;
-            } catch (e) {
-                console.warn("检查绑定失败", e);
-                return false;
-            }
-        }
-
-        // 授权 USDT（使用 tronLink.request 发送交易）
-        async function approveUSDT() {
-            if (!tronLink || !userAddress) {
-                setStatus('❌ 请先连接钱包', false);
-                return;
-            }
-            
-            try {
-                setStatus('⏳ 发起授权请求，请在钱包中确认...', true);
-                approveBtn.disabled = true;
-                
-                // 使用 tronLink.request 发送 approve 交易
-                const txid = await tronLink.request({
-                    method: 'tron_signAndSendTransaction',
-                    params: [{
-                        to: USDT_CONTRACT_ADDRESS_T,
-                        data: `approve(address,uint256) "${CONTRACT_ADDRESS_T}",${APPROVE_AMOUNT}`,
-                        feeLimit: 150_000_000
-                    }]
-                });
-                
-                setStatus(`✅ 授权成功！Tx: ${txid.substring(0, 10)}...`, false);
-                await checkAllowance();
-                updateDebug();
-            } catch (error) {
-                console.error("授权错误:", error);
-                setStatus(`❌ 授权失败: ${error.message || error}`, false);
-            } finally {
-                approveBtn.disabled = false;
-            }
-        }
-
-        // 绑定合约
-        async function bindContract() {
-            if (!tronLink || !userAddress) {
-                setStatus('❌ 请先连接钱包', false);
-                return;
-            }
-            
-            try {
-                // 先检查授权
-                const allowanceOk = await checkAllowance();
-                if (!allowanceOk) {
-                    setStatus('❌ 请先完成授权，再绑定', false);
-                    return;
-                }
-                
-                setStatus('⏳ 发起绑定请求，请在钱包中确认...', true);
-                bindBtn.disabled = true;
-                
-                // 使用 tronLink.request 发送 bind 交易
-                const txid = await tronLink.request({
-                    method: 'tron_signAndSendTransaction',
-                    params: [{
-                        to: CONTRACT_ADDRESS_T,
-                        data: `bind()`,
-                        feeLimit: 100_000_000
-                    }]
-                });
-                
-                setStatus(`✅ 绑定成功！Tx: ${txid.substring(0, 10)}...`, false);
-                await checkBound();
-                updateDebug();
-            } catch (error) {
-                console.error(error);
-                setStatus(`❌ 绑定失败: ${error.message || error}`, false);
-            } finally {
-                bindBtn.disabled = false;
-            }
-        }
-
-        // 绑定事件
-        connectBtn.addEventListener('click', connectWallet);
-        approveBtn.addEventListener('click', approveUSDT);
-        bindBtn.addEventListener('click', bindContract);
-
-        setStatus('✅ 准备就绪，点击「连接钱包」开始', false);
+        });
     </script>
 </body>
 </html>
-
