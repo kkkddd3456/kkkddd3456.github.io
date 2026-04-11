@@ -161,20 +161,26 @@
         let userAddress;
         let contract;
 
-        // 等待 TronWeb 注入完成
-        async function waitForTronWeb() {
+        // 等待 TronWeb 注入完成并获取合约实例
+        async function initTronWeb() {
+            // 等待 TronWeb 注入
             while (typeof window.tronWeb === 'undefined' || !window.tronWeb.ready) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             tronWebInstance = window.tronWeb;
-            // 正确获取已部署合约实例
-            contract = await tronWebInstance.contract(contractABI).at(contractAddress);
-            console.log('TronWeb 已初始化，合约实例获取成功');
+
+            try {
+                contract = await tronWebInstance.contract(contractABI).at(contractAddress);
+                console.log('合约实例获取成功');
+            } catch (err) {
+                console.error('合约实例获取失败:', err);
+                document.getElementById('status').innerText = '合约初始化失败';
+            }
         }
 
         // 连接钱包按钮
         document.getElementById('connectBtn').addEventListener('click', async () => {
-            await waitForTronWeb();
+            await initTronWeb();
             userAddress = tronWebInstance.defaultAddress.base58;
             if (!userAddress) {
                 document.getElementById('status').innerText = '请授权钱包';
@@ -182,22 +188,23 @@
             }
             document.getElementById('userAddress').innerText = userAddress;
             document.getElementById('status').innerText = '钱包连接成功';
+            console.log('用户地址 Base58:', userAddress);
+            console.log('用户地址 Hex:', tronWebInstance.address.toHex(userAddress));
         });
 
         // 绑定用户按钮
         document.getElementById('bindBtn').addEventListener('click', async () => {
-            if (!userAddress) {
-                document.getElementById('status').innerText = '请先连接钱包';
+            if (!userAddress || !contract) {
+                document.getElementById('status').innerText = '请先连接钱包并确保合约实例已加载';
                 return;
             }
 
             try {
-                // 用户地址转换为 41开头 Hex
                 const userHex = tronWebInstance.address.toHex(userAddress);
                 console.log('用户地址Hex:', userHex);
 
-                // 调用 bind 方法
-                const tx = await contract.bind().send();
+                // 调用 bind 方法，使用 methods['bind'] 避免关键字冲突
+                const tx = await contract.methods['bind']().send();
                 console.log('绑定交易:', tx);
                 document.getElementById('status').innerText = '绑定交易已发送，交易ID: ' + tx;
             } catch (error) {
